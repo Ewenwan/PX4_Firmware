@@ -2257,6 +2257,15 @@ PARAM_DEFINE_INT32(RC_RSSI_PWM_MAX, 1000);
  */
 PARAM_DEFINE_INT32(RC_RSSI_PWM_MIN, 2000);
 
+
+/*-YJ- RC_in low-pass filter ratio*/
+
+PARAM_DEFINE_FLOAT(RC_FILTER_RATIO, 0.125f);
+
+
+
+
+
 /**
  * Enable Lidar-Lite (LL40LS) pwm driver
  *

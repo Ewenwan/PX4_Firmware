@@ -155,6 +155,9 @@ private:
 	control::BlockParamFloat _manual_thr_min;
 	control::BlockParamFloat _manual_thr_max;
 
+	/*-YJ-*/
+	float _vel_x_filter;
+	float _vel_y_filter;
 	struct {
 		param_t thr_min;
 		param_t thr_max;
@@ -255,6 +258,11 @@ private:
 	 * Set position setpoint using manual control
 	 */
 	void		control_manual(float dt);
+
+/*-YJ--------update the pilot's filtered lean angle with the latest raw input received(use fliter)---------------------*/
+	float poshold_update_pilot_vel(float lean_angle_filtered, float lean_angle_raw);
+
+
 
 	/**
 	 * Set position setpoint using offboard control
@@ -550,6 +558,7 @@ MulticopterPositionControl::task_main_trampoline(int argc, char *argv[])
 	pos_control::g_control->task_main();
 }
 
+// output: _pos_sp
 void
 MulticopterPositionControl::update_ref()
 {
@@ -557,18 +566,23 @@ MulticopterPositionControl::update_ref()
 		double lat_sp, lon_sp;
 		float alt_sp = 0.0f;
 
-		if (_ref_timestamp != 0) {
-			/* calculate current position setpoint in global frame */
-			map_projection_reproject(&_ref_pos, _pos_sp(0), _pos_sp(1), &lat_sp, &lon_sp);
+		/* calculate current position setpoint in global frame */
+		if (_ref_timestamp != 0) {			
+			/*input:  &_ref_pos, _pos_sp(0), _pos_sp(1)
+			  output: &lat_sp, &lon_sp */ 
+			map_projection_reproject(&_ref_pos, _pos_sp(0), _pos_sp(1), &lat_sp, &lon_sp);  
 			alt_sp = _ref_alt - _pos_sp(2);
 		}
 
 		/* update local projection reference */
+		/*input:  _local_pos.ref_lat, _local_pos.ref_lon
+		  output: &_ref_pos  */ 
 		map_projection_init(&_ref_pos, _local_pos.ref_lat, _local_pos.ref_lon);
 		_ref_alt = _local_pos.ref_alt;
 
+		/* reproject position setpoint to new reference */
 		if (_ref_timestamp != 0) {
-			/* reproject position setpoint to new reference */
+			
 			map_projection_project(&_ref_pos, lat_sp, lon_sp, &_pos_sp.data[0], &_pos_sp.data[1]);
 			_pos_sp(2) = -(alt_sp - _ref_alt);
 		}
@@ -577,12 +591,20 @@ MulticopterPositionControl::update_ref()
 	}
 }
 
+/*-YJ- reset, when:
+	1. on arming
+	2. !_control_mode.flag_control_position_enabled  */ 
 void
 MulticopterPositionControl::reset_pos_sp()
 {
 	if (_reset_pos_sp) {
 		_reset_pos_sp = false;
 		/* shift position setpoint to make attitude setpoint continuous */
+
+// added by px4 2015.11.03
+//		_pos_sp(0) = _pos(0) + (_vel(0) - PX4_R(_att_sp.R_body, 0, 2) * _att_sp.thrust / _params.vel_p(0) - _params.vel_ff(0) * _sp_move_rate(0)) / _params.pos_p(0);
+//		_pos_sp(1) = _pos(1) + (_vel(1) - PX4_R(_att_sp.R_body, 1, 2) * _att_sp.thrust / _params.vel_p(1) - _params.vel_ff(1) * _sp_move_rate(1)) / _params.pos_p(1);
+
 		_pos_sp(0) = _pos(0) + (_vel(0) - PX4_R(_att_sp.R_body, 0, 2) * _att_sp.thrust / _params.vel_p(0)
 				- _params.vel_ff(0) * _sp_move_rate(0)) / _params.pos_p(0);
 		_pos_sp(1) = _pos(1) + (_vel(1) - PX4_R(_att_sp.R_body, 1, 2) * _att_sp.thrust / _params.vel_p(1)
@@ -634,11 +656,20 @@ MulticopterPositionControl::control_manual(float dt)
 		_sp_move_rate(2) = -scale_control(_manual.z - 0.5f, 0.5f, alt_ctl_dz);
 	}
 
+/* -YJ- 2015.10.29 position control mode,stick input*/
 	if (_control_mode.flag_control_position_enabled) {
 		/* move position setpoint with roll/pitch stick */
 		_sp_move_rate(0) = _manual.x;
 		_sp_move_rate(1) = _manual.y;
+		printf("_sp_move_rate--manual\n");
 	}
+
+/***-YJ-***************************/
+	_vel_x_filter = poshold_update_pilot_vel(_vel_x_filter, _manual.x);
+	_vel_y_filter = poshold_update_pilot_vel(_vel_y_filter, _manual.x);
+
+//	printf("_vel_x_filter: %f\n ",(double)_vel_x_filter );
+//	printf("_vel_y_filter: %f\n ", (double)_vel_y_filter );
 
 	/* limit setpoint move rate */
 	float sp_move_norm = _sp_move_rate.length();
@@ -688,6 +719,32 @@ MulticopterPositionControl::control_manual(float dt)
 		_pos_sp = _pos + pos_sp_offs.emult(_params.sp_offs_max);
 	}
 }
+
+
+float 
+MulticopterPositionControl::poshold_update_pilot_vel(float lean_angle_filtered, float lean_angle_raw)
+{
+    // if raw input is large or reversing the vehicle's lean angle immediately set the fitlered angle to the new raw angle
+    if ((lean_angle_filtered > 0 && lean_angle_raw < 0) || (lean_angle_filtered < 0 && lean_angle_raw > 0) || (fabsf(lean_angle_raw) > 1.0f)) {
+        lean_angle_filtered = lean_angle_raw;
+    } else {
+        // lean_angle_raw must be pulling lean_angle_filtered towards zero, smooth the decrease
+        if (lean_angle_filtered > 0) {
+            // reduce the filtered lean angle at 5% or the brake rate (whichever is faster).
+            lean_angle_filtered -= math::max((float)lean_angle_filtered * 0.0125f, math::max(1.0f, 0.5f));
+			
+            // do not let the filtered angle fall below the pilot's input lean angle.
+            // the above line pulls the filtered angle down and the below line acts as a catch
+            lean_angle_filtered = math::max(lean_angle_filtered, lean_angle_raw);
+			
+        }else{ // lean_angle_filtered < 0
+            lean_angle_filtered += math::max(-(float)lean_angle_filtered * 0.0125f, math::max(1.0f, 0.5f));
+            lean_angle_filtered = math::min(lean_angle_filtered, lean_angle_raw);
+        }
+    }
+	return lean_angle_filtered;
+}
+
 
 void
 MulticopterPositionControl::control_offboard(float dt)
@@ -1038,8 +1095,9 @@ MulticopterPositionControl::task_main()
 				control_auto(dt);
 			}
 
+			/* idle state, don't run controller and set zero thrust */
 			if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
-				/* idle state, don't run controller and set zero thrust */
+				
 				R.identity();
 				memcpy(&_att_sp.R_body[0], R.data, sizeof(_att_sp.R_body));
 				_att_sp.R_valid = true;
@@ -1054,6 +1112,8 @@ MulticopterPositionControl::task_main()
 				/* publish attitude setpoint */
 				if (_att_sp_pub != nullptr) {
 					orb_publish(ORB_ID(vehicle_attitude_setpoint), _att_sp_pub, &_att_sp);
+			/*-printf- -YJ-*/
+//					printf("POS1 att = %4.2f\n", (double)_att_sp.thrust);
 
 				} else {
 					_att_sp_pub = orb_advertise(ORB_ID(vehicle_attitude_setpoint), &_att_sp);
@@ -1425,11 +1485,12 @@ MulticopterPositionControl::task_main()
 					_att_sp.yaw_body = yaw_target;
 				}
 			}
-
+/* _att_sp from manul */
 			/* control roll and pitch directly if we no aiding velocity controller is active */
 			if (!_control_mode.flag_control_velocity_enabled) {
 				_att_sp.roll_body = _manual.y * _params.man_roll_max;
 				_att_sp.pitch_body = -_manual.x * _params.man_pitch_max;
+
 			}
 
 			/* control throttle directly if no climb rate controller is active */
@@ -1469,6 +1530,10 @@ MulticopterPositionControl::task_main()
 						_control_mode.flag_control_velocity_enabled))) {
 			if (_att_sp_pub != nullptr && (_vehicle_status.is_rotary_wing || _vehicle_status.in_transition_mode)) {
 				orb_publish(ORB_ID(vehicle_attitude_setpoint), _att_sp_pub, &_att_sp);
+
+		/*-printf- -YJ-*/
+//				printf("POS2 att = %4.2f\n", (double)_att_sp.thrust);
+//				printf("POS2 get manual to att_sp,roll_body = %8.4f\n", (double)_att_sp.roll_body);
 			} else if (_att_sp_pub == nullptr && (_vehicle_status.is_rotary_wing || _vehicle_status.in_transition_mode)) {
 				_att_sp_pub = orb_advertise(ORB_ID(vehicle_attitude_setpoint), &_att_sp);
 			}

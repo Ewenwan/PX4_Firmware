@@ -60,6 +60,23 @@
 #include <systemlib/param/param.h>
 #include <systemlib/err.h>
 
+
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+/* -YJ- 2015.10.23  */
+#include "codegen/ellipsoid_fit_simplify_1023_2/ellipsoid_fit_simplify_1023_2.h"
+#include "codegen/ellipsoid_fit_simplify_1023_2/ellipsoid_fit_simplify_1023_2_types.h"
+#include "codegen/ellipsoid_fit_simplify_1023_2/rtwtypes.h"
+
+#ifdef __cplusplus
+}
+#endif
+
+
+
 /* oddly, ERROR is not defined for c++ */
 #ifdef ERROR
 # undef ERROR
@@ -73,6 +90,7 @@ static constexpr unsigned int calibration_sides = 6;			///< The total number of 
 static constexpr unsigned int calibration_total_points = 240;		///< The total points per magnetometer
 static constexpr unsigned int calibraton_duration_seconds = 42; 	///< The total duration the routine is allowed to take
 
+extern "C" __EXPORT calibrate_return mag_calibrate_all(int , int32_t);
 calibrate_return mag_calibrate_all(int mavlink_fd, int32_t (&device_ids)[max_mags]);
 
 /// Data passed to calibration worker routine
@@ -478,6 +496,10 @@ calibrate_return mag_calibrate_all(int mavlink_fd, int32_t (&device_ids)[max_mag
 	float sphere_y[max_mags];
 	float sphere_z[max_mags];
 	float sphere_radius[max_mags];
+
+	//-YJ-
+	float center[3];
+	float radii[3];
 	
 	// Sphere fit the data to get calibration values
 	if (result == calibrate_return_ok) {
@@ -490,6 +512,24 @@ calibrate_return mag_calibrate_all(int mavlink_fd, int32_t (&device_ids)[max_mag
 							 100, 0.0f,
 							 &sphere_x[cur_mag], &sphere_y[cur_mag], &sphere_z[cur_mag],
 							 &sphere_radius[cur_mag]);
+
+				/*-YJ- 2015.10.23 */
+
+				float N = (float)worker_data.calibration_counter_total[cur_mag];
+				int mag_size = worker_data.calibration_counter_total[cur_mag];
+				
+				emxArray_real32_T mag_x;
+				mag_x.data = worker_data.x[cur_mag];
+				mag_x.size = &mag_size;
+				mag_x.allocatedSize = mag_size;
+				mag_x.numDimensions = 1;
+				mag_x.canFreeData = false;
+
+
+				ellipsoid_fit_simplify_1023_2(&mag_x, &mag_x,  &mag_x, N, center, radii);
+				printf("center X=%8.4f, Y%8.4f, Z%8.4f\n", (double)center[0], (double)center[1], (double)center[2]);
+				printf("radii X=%8.4f, Y%8.4f, Z%8.4f\n", (double)radii[0], (double)radii[1], (double)radii[2]);
+
 				
 				if (!PX4_ISFINITE(sphere_x[cur_mag]) || !PX4_ISFINITE(sphere_y[cur_mag]) || !PX4_ISFINITE(sphere_z[cur_mag])) {
 					mavlink_and_console_log_critical(mavlink_fd, "[cal] ERROR: NaN in sphere fit for mag #%u", cur_mag);

@@ -77,6 +77,8 @@
 extern "C" {
 #endif
 #include "codegen/AttitudeEKF.h"
+/* -YJ- 2015.10.13 */
+#include "codegen/AttEKF/AttitudeEKF_0916.h"
 #include "attitude_estimator_ekf_params.h"
 #ifdef __cplusplus
 }
@@ -196,8 +198,21 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 				     0,   0,   0,   0,   0,   0,   0,   0,  0.0f,   0,   0,   100.0f,
 				    }; /**< init: diagonal matrix with big values */
 
-	float x_aposteriori[12];
-	float P_aposteriori[144];
+	// 
+	float x_aposteriori[12] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -9.81f, 1.0f, 0.0f, 0.0f};
+	float P_aposteriori[144] = {200.f, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+							     0, 200.f,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+							     0,   0, 200.f,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+							     0,   0,   0, 200.f,   0,   0,   0,   0,   0,   0,   0,   0,
+							     0,   0,   0,   0,  200.f,  0,   0,   0,   0,   0,   0,   0,
+							     0,   0,   0,   0,   0, 200.f,   0,   0,   0,   0,   0,   0,
+							     0,   0,   0,   0,   0,   0, 200.f,   0,   0,   0,   0,   0,
+							     0,   0,   0,   0,   0,   0,   0, 200.f,   0,   0,   0,   0,
+							     0,   0,   0,   0,   0,   0,   0,   0, 200.f,   0,   0,   0,
+							     0,   0,   0,   0,   0,   0,   0,   0,  0.0f, 200.0f,   0,   0,
+							     0,   0,   0,   0,   0,   0,   0,   0,  0.0f,   0,   200.0f,   0,
+							     0,   0,   0,   0,   0,   0,   0,   0,  0.0f,   0,   0,   100.0f,
+				 				 }; 
 
 	/* output euler angles */
 	float euler[3] = {0.0f, 0.0f, 0.0f};
@@ -207,10 +222,10 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 			      0,  0,  1.f
 			     };		/**< init: identity matrix */
 
-	float debugOutput[4] = { 0.0f };
+	//float debugOutput[4] = { 0.0f };
 
 	/* Initialize filter */
-	AttitudeEKF_initialize();
+	//AttitudeEKF_initialize();
 
 	struct sensor_combined_s raw;
 	memset(&raw, 0, sizeof(raw));
@@ -529,24 +544,49 @@ int attitude_estimator_ekf_thread_main(int argc, char *argv[])
 					}
 
 					/* Call the estimator */
-					AttitudeEKF(false, // approx_prediction
-							(unsigned char)ekf_params.use_moment_inertia,
-							update_vect,
-							dt,
-							z_k,
-							ekf_params.q[0], // q_rotSpeed,
-							ekf_params.q[1], // q_rotAcc
-							ekf_params.q[2], // q_acc
-							ekf_params.q[3], // q_mag
-							ekf_params.r[0], // r_gyro
-							ekf_params.r[1], // r_accel
-							ekf_params.r[2], // r_mag
-							ekf_params.moment_inertia_J,
-							x_aposteriori,
-							P_aposteriori,
-							Rot_matrix,
-							euler,
-							debugOutput);
+//					AttitudeEKF(false, // approx_prediction
+//							(unsigned char)ekf_params.use_moment_inertia,
+//							update_vect,
+//							dt,
+//							z_k,
+//							ekf_params.q[0], // q_rotSpeed,
+//							ekf_params.q[1], // q_rotAcc
+//							ekf_params.q[2], // q_acc
+//							ekf_params.q[3], // q_mag
+//							ekf_params.r[0], // r_gyro
+//							ekf_params.r[1], // r_accel
+//							ekf_params.r[2], // r_mag
+//							ekf_params.moment_inertia_J,
+//							x_aposteriori,
+//							P_aposteriori,
+//							Rot_matrix,
+//							euler,
+//							debugOutput);
+
+
+//					-YJ- 2015-10-10 
+					float q_vector[4];
+					memcpy(q_vector, ekf_params.q, sizeof(q_vector));
+					float r_vector[3];
+					memcpy(r_vector, ekf_params.r, sizeof(r_vector));
+					
+					/* -YJ- 2015-10-10 EKF attitude */
+					 AttitudeEKF_0916(false, 
+					 				(unsigned char)ekf_params.use_moment_inertia,
+					 				x_aposteriori,
+					 				P_aposteriori,
+					 				update_vect,
+					 				dt, 
+					 				z_k, 
+					 				q_vector, 
+					 				r_vector,
+					 				ekf_params.moment_inertia_J,
+					 				x_aposteriori,
+									P_aposteriori,
+									Rot_matrix,
+									euler);
+
+					
 
 					/* swap values for next iteration, check for fatal inputs */
 					if (PX4_ISFINITE(euler[0]) && PX4_ISFINITE(euler[1]) && PX4_ISFINITE(euler[2])) {

@@ -38,8 +38,9 @@
 MODULE_COMMAND	 	= position_estimator_inav
 SRCS		 	= position_estimator_inav_main.c \
 			position_estimator_inav_params.c \
-			inertial_filter.c
-
+			inertial_filter.c\
+		  	codegen/HeightEKF.c \
+		   
 MODULE_STACKSIZE = 1200
 
 ifeq ($(PX4_TARGEGT_OS),nuttx)

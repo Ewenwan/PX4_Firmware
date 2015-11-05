@@ -124,6 +124,8 @@ public:
 
 private:
 
+//	int _printf_count; /*use for printf count*/
+
 	bool	_task_should_exit;		/**< if true, task_main() should exit */
 	int		_control_task;			/**< task handle */
 
@@ -260,6 +262,12 @@ private:
 	void		control_attitude(float dt);
 
 	/**
+	 * -YJ- RC_in filter.
+	 */
+	float 	rc_in_filter(float rc_filtered, float rc_raw);
+
+
+	/**
 	 * Attitude rates controller.
 	 */
 	void		control_attitude_rates(float dt);
@@ -325,6 +333,9 @@ MulticopterAttitudeControl::MulticopterAttitudeControl() :
 	_controller_latency_perf(perf_alloc_once(PC_ELAPSED, "ctrl_latency"))
 
 {
+	/*-YJ-*/
+//	_printf_count = 0;
+
 	memset(&_v_att, 0, sizeof(_v_att));
 	memset(&_v_att_sp, 0, sizeof(_v_att_sp));
 	memset(&_v_rates_sp, 0, sizeof(_v_rates_sp));
@@ -538,6 +549,7 @@ MulticopterAttitudeControl::vehicle_attitude_setpoint_poll()
 	if (updated) {
 		orb_copy(ORB_ID(vehicle_attitude_setpoint), _v_att_sp_sub, &_v_att_sp);
 	}
+//	printf("mc_att_control, att_SP_poll");
 }
 
 void
@@ -550,6 +562,7 @@ MulticopterAttitudeControl::vehicle_rates_setpoint_poll()
 	if (updated) {
 		orb_copy(ORB_ID(vehicle_rates_setpoint), _v_rates_sp_sub, &_v_rates_sp);
 	}
+	printf("mc_att_control, att_rate_SP");
 }
 
 void
@@ -606,7 +619,21 @@ MulticopterAttitudeControl::vehicle_motor_limits_poll()
 void
 MulticopterAttitudeControl::control_attitude(float dt)
 {
+	/*orb_copy (ORB_ID(vehicle_attitude_setpoint), _v_att_sp_sub, &_v_att_sp)
+	output: _v_att_sp*/
 	vehicle_attitude_setpoint_poll();
+	
+/******-YJ- -printf- stick att setpiont input *****************************************************************/	
+//	if(_printf_count <= 50)
+//	{
+//		_printf_count	= _printf_count + 1;
+//	}
+//	else{
+//		printf("att_C thrust = %4.2f\n", (double)_v_att_sp.thrust);
+//		printf("att_C roll_body = %4.2f\n", (double)_v_att_sp.roll_body);
+//		printf("_printf_count = %4.2f\n", (double)_printf_count);
+//		_printf_count = 0;
+//	}	
 
 	_thrust_sp = _v_att_sp.thrust;
 
@@ -692,6 +719,35 @@ MulticopterAttitudeControl::control_attitude(float dt)
 	/* feed forward yaw setpoint rate */
 	_rates_sp(2) += _v_att_sp.yaw_sp_move_rate * yaw_w * _params.yaw_ff;
 }
+
+
+/***********-YJ- 2015.11.03 stick rc_in filter test***********/
+float 
+MulticopterAttitudeControl::rc_in_filter(float rc_filtered, float rc_raw)
+{
+    // if raw input is large or reversing the vehicle's lean angle immediately set the fitlered angle to the new raw angle
+    if ((rc_filtered > 0 && rc_raw < 0) || (rc_filtered < 0 && rc_raw > 0) || (fabsf(rc_raw) > 1.0f)) {
+        rc_filtered = rc_raw;
+    } else {
+        // lean_angle_raw must be pulling lean_angle_filtered towards zero, smooth the decrease
+        if (rc_filtered > 0) {
+            // reduce the filtered lean angle at 5% or the brake rate (whichever is faster).
+            rc_filtered -= math::max((float)rc_filtered * 0.0125f, math::max(1.0f, 0.5f));
+			
+            // do not let the filtered angle fall below the pilot's input lean angle.
+            // the above line pulls the filtered angle down and the below line acts as a catch
+            rc_filtered = math::max(rc_filtered, rc_raw);
+			
+        }else{ // lean_angle_filtered < 0
+            rc_filtered += math::max(-(float)rc_filtered * 0.0125f, math::max(1.0f, 0.5f));
+            rc_filtered = math::min(rc_filtered, rc_raw);
+        }
+    }
+	return rc_filtered;
+}
+
+
+
 
 /*
  * Attitude rates controller.

@@ -1018,6 +1018,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		if (param_log_rate > 0) {
 
 			/* we can't do more than ~ 500 Hz, even with a massive buffer */
+			/*-YJ- log rate no more than 500*/
 			if (param_log_rate > 500) {
 				param_log_rate = 500;
 			}
@@ -1157,35 +1158,35 @@ int sdlog2_thread_main(int argc, char *argv[])
 			struct log_GPS_s log_GPS;
 			struct log_ATTC_s log_ATTC;
 			struct log_STAT_s log_STAT;
-			struct log_VTOL_s log_VTOL;
+	//		struct log_VTOL_s log_VTOL;
 			struct log_RC_s log_RC;
 			struct log_OUT0_s log_OUT0;
-			struct log_AIRS_s log_AIRS;
+	//		struct log_AIRS_s log_AIRS;
 			struct log_ARSP_s log_ARSP;
 			struct log_FLOW_s log_FLOW;
 			struct log_GPOS_s log_GPOS;
 			struct log_GPSP_s log_GPSP;
-			struct log_ESC_s log_ESC;
+//			struct log_ESC_s log_ESC;
 			struct log_GVSP_s log_GVSP;
-			struct log_BATT_s log_BATT;
-			struct log_DIST_s log_DIST;
-			struct log_TEL_s log_TEL;
-			struct log_EST0_s log_EST0;
-			struct log_EST1_s log_EST1;
-			struct log_EST2_s log_EST2;
-			struct log_EST3_s log_EST3;
-			struct log_PWR_s log_PWR;
-			struct log_MOCP_s log_MOCP;
-			struct log_VISN_s log_VISN;
-			struct log_GS0A_s log_GS0A;
-			struct log_GS0B_s log_GS0B;
-			struct log_GS1A_s log_GS1A;
-			struct log_GS1B_s log_GS1B;
-			struct log_TECS_s log_TECS;
-			struct log_WIND_s log_WIND;
-			struct log_ENCD_s log_ENCD;
-			struct log_TSYN_s log_TSYN;
-			struct log_MACS_s log_MACS;
+//			struct log_BATT_s log_BATT;
+//			struct log_DIST_s log_DIST;
+//			struct log_TEL_s log_TEL;
+//			struct log_EST0_s log_EST0;
+//			struct log_EST1_s log_EST1;
+//			struct log_EST2_s log_EST2;
+//			struct log_EST3_s log_EST3;
+//			struct log_PWR_s log_PWR;
+//			struct log_MOCP_s log_MOCP;
+//			struct log_VISN_s log_VISN;
+//			struct log_GS0A_s log_GS0A;
+//			struct log_GS0B_s log_GS0B;
+//			struct log_GS1A_s log_GS1A;
+//			struct log_GS1B_s log_GS1B;
+//			struct log_TECS_s log_TECS;
+//			struct log_WIND_s log_WIND;
+//			struct log_ENCD_s log_ENCD;
+//			struct log_TSYN_s log_TSYN;
+//			struct log_MACS_s log_MACS;
 		} body;
 	} log_msg = {
 		LOG_PACKET_HEADER_INIT(0)
@@ -1369,9 +1370,9 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 		/* --- VTOL VEHICLE STATUS --- */
 		if(copy_if_updated(ORB_ID(vtol_vehicle_status), &subs.vtol_status_sub, &buf.vtol_status)) {
-			log_msg.msg_type = LOG_VTOL_MSG;
-			log_msg.body.log_VTOL.airspeed_tot = buf.vtol_status.airspeed_tot;
-			LOGBUFFER_WRITE_AND_COUNT(VTOL);
+//			log_msg.msg_type = LOG_VTOL_MSG;
+//			log_msg.body.log_VTOL.airspeed_tot = buf.vtol_status.airspeed_tot;
+//			LOGBUFFER_WRITE_AND_COUNT(VTOL);
 		}
 
 		/* --- GPS POSITION - UNIT #1 --- */
@@ -1402,45 +1403,45 @@ int sdlog2_thread_main(int argc, char *argv[])
 			if (copy_if_updated(ORB_ID(satellite_info), &subs.sat_info_sub, &buf.sat_info)) {
 
 				/* log the SNR of each satellite for a detailed view of signal quality */
-				unsigned sat_info_count = MIN(buf.sat_info.count, sizeof(buf.sat_info.snr) / sizeof(buf.sat_info.snr[0]));
-				unsigned log_max_snr = sizeof(log_msg.body.log_GS0A.satellite_snr) / sizeof(log_msg.body.log_GS0A.satellite_snr[0]);
+//				unsigned sat_info_count = MIN(buf.sat_info.count, sizeof(buf.sat_info.snr) / sizeof(buf.sat_info.snr[0]));
+//				unsigned log_max_snr = sizeof(log_msg.body.log_GS0A.satellite_snr) / sizeof(log_msg.body.log_GS0A.satellite_snr[0]);
 
-				log_msg.msg_type = LOG_GS0A_MSG;
-				memset(&log_msg.body.log_GS0A, 0, sizeof(log_msg.body.log_GS0A));
-				snr_mean = 0.0f;
+//				log_msg.msg_type = LOG_GS0A_MSG;
+//				memset(&log_msg.body.log_GS0A, 0, sizeof(log_msg.body.log_GS0A));
+//				snr_mean = 0.0f;
 
-				/* fill set A and calculate mean SNR */
-				for (unsigned i = 0; i < sat_info_count; i++) {
+//				/* fill set A and calculate mean SNR */
+//				for (unsigned i = 0; i < sat_info_count; i++) {
 
-					snr_mean += buf.sat_info.snr[i];
+//					snr_mean += buf.sat_info.snr[i];
 
-					int satindex = buf.sat_info.svid[i] - 1;
+//					int satindex = buf.sat_info.svid[i] - 1;
 
-					/* handles index exceeding and wraps to to arithmetic errors */
-					if ((satindex >= 0) && (satindex < (int)log_max_snr)) {
-						/* map satellites by their ID so that logs from two receivers can be compared */
-						log_msg.body.log_GS0A.satellite_snr[satindex] = buf.sat_info.snr[i];
-					}
-				}
-				LOGBUFFER_WRITE_AND_COUNT(GS0A);
-				snr_mean /= sat_info_count;
+//					/* handles index exceeding and wraps to to arithmetic errors */
+//					if ((satindex >= 0) && (satindex < (int)log_max_snr)) {
+//						/* map satellites by their ID so that logs from two receivers can be compared */
+//						log_msg.body.log_GS0A.satellite_snr[satindex] = buf.sat_info.snr[i];
+//					}
+//				}
+//				LOGBUFFER_WRITE_AND_COUNT(GS0A);
+//				snr_mean /= sat_info_count;
 
-				log_msg.msg_type = LOG_GS0B_MSG;
-				memset(&log_msg.body.log_GS0B, 0, sizeof(log_msg.body.log_GS0B));
+//				log_msg.msg_type = LOG_GS0B_MSG;
+//				memset(&log_msg.body.log_GS0B, 0, sizeof(log_msg.body.log_GS0B));
 
-				/* fill set B */
-				for (unsigned i = 0; i < sat_info_count; i++) {
+//				/* fill set B */
+//				for (unsigned i = 0; i < sat_info_count; i++) {
 
-					/* get second bank of satellites, thus deduct bank size from index */
-					int satindex = buf.sat_info.svid[i] - 1 - log_max_snr;
+//					/* get second bank of satellites, thus deduct bank size from index */
+//					int satindex = buf.sat_info.svid[i] - 1 - log_max_snr;
 
-					/* handles index exceeding and wraps to to arithmetic errors */
-					if ((satindex >= 0) && (satindex < (int)log_max_snr)) {
-						/* map satellites by their ID so that logs from two receivers can be compared */
-						log_msg.body.log_GS0B.satellite_snr[satindex] = buf.sat_info.snr[i];
-					}
-				}
-				LOGBUFFER_WRITE_AND_COUNT(GS0B);
+//					/* handles index exceeding and wraps to to arithmetic errors */
+//					if ((satindex >= 0) && (satindex < (int)log_max_snr)) {
+//						/* map satellites by their ID so that logs from two receivers can be compared */
+//						log_msg.body.log_GS0B.satellite_snr[satindex] = buf.sat_info.snr[i];
+//					}
+//				}
+//				LOGBUFFER_WRITE_AND_COUNT(GS0B);
 			}
 		}
 
@@ -1510,14 +1511,14 @@ int sdlog2_thread_main(int argc, char *argv[])
 			}
 
 			if (write_SENS1) {
-				log_msg.msg_type = LOG_AIR1_MSG;
-				log_msg.body.log_SENS.baro_pres = buf.sensor.baro1_pres_mbar;
-				log_msg.body.log_SENS.baro_alt = buf.sensor.baro1_alt_meter;
-				log_msg.body.log_SENS.baro_temp = buf.sensor.baro1_temp_celcius;
-				log_msg.body.log_SENS.diff_pres = buf.sensor.differential_pressure1_pa;
-				log_msg.body.log_SENS.diff_pres_filtered = buf.sensor.differential_pressure1_filtered_pa;
-				// XXX moving to AIR0-AIR2 instead of SENS
-				LOGBUFFER_WRITE_AND_COUNT(SENS);
+//				log_msg.msg_type = LOG_AIR1_MSG;
+//				log_msg.body.log_SENS.baro_pres = buf.sensor.baro1_pres_mbar;
+//				log_msg.body.log_SENS.baro_alt = buf.sensor.baro1_alt_meter;
+//				log_msg.body.log_SENS.baro_temp = buf.sensor.baro1_temp_celcius;
+//				log_msg.body.log_SENS.diff_pres = buf.sensor.differential_pressure1_pa;
+//				log_msg.body.log_SENS.diff_pres_filtered = buf.sensor.differential_pressure1_filtered_pa;
+//				// XXX moving to AIR0-AIR2 instead of SENS
+//				LOGBUFFER_WRITE_AND_COUNT(SENS);
 			}
 
 			if (buf.sensor.accelerometer1_timestamp != accelerometer1_timestamp) {
@@ -1536,20 +1537,20 @@ int sdlog2_thread_main(int argc, char *argv[])
 			}
 
 			if (write_IMU1) {
-				log_msg.msg_type = LOG_IMU1_MSG;
-				log_msg.body.log_IMU.gyro_x = buf.sensor.gyro1_rad_s[0];
-				log_msg.body.log_IMU.gyro_y = buf.sensor.gyro1_rad_s[1];
-				log_msg.body.log_IMU.gyro_z = buf.sensor.gyro1_rad_s[2];
-				log_msg.body.log_IMU.acc_x = buf.sensor.accelerometer1_m_s2[0];
-				log_msg.body.log_IMU.acc_y = buf.sensor.accelerometer1_m_s2[1];
-				log_msg.body.log_IMU.acc_z = buf.sensor.accelerometer1_m_s2[2];
-				log_msg.body.log_IMU.mag_x = buf.sensor.magnetometer1_ga[0];
-				log_msg.body.log_IMU.mag_y = buf.sensor.magnetometer1_ga[1];
-				log_msg.body.log_IMU.mag_z = buf.sensor.magnetometer1_ga[2];
-				log_msg.body.log_IMU.temp_gyro = buf.sensor.gyro1_temp;
-				log_msg.body.log_IMU.temp_acc = buf.sensor.accelerometer1_temp;
-				log_msg.body.log_IMU.temp_mag = buf.sensor.magnetometer1_temp;
-				LOGBUFFER_WRITE_AND_COUNT(IMU);
+//				log_msg.msg_type = LOG_IMU1_MSG;
+//				log_msg.body.log_IMU.gyro_x = buf.sensor.gyro1_rad_s[0];
+//				log_msg.body.log_IMU.gyro_y = buf.sensor.gyro1_rad_s[1];
+//				log_msg.body.log_IMU.gyro_z = buf.sensor.gyro1_rad_s[2];
+//				log_msg.body.log_IMU.acc_x = buf.sensor.accelerometer1_m_s2[0];
+//				log_msg.body.log_IMU.acc_y = buf.sensor.accelerometer1_m_s2[1];
+//				log_msg.body.log_IMU.acc_z = buf.sensor.accelerometer1_m_s2[2];
+//				log_msg.body.log_IMU.mag_x = buf.sensor.magnetometer1_ga[0];
+//				log_msg.body.log_IMU.mag_y = buf.sensor.magnetometer1_ga[1];
+//				log_msg.body.log_IMU.mag_z = buf.sensor.magnetometer1_ga[2];
+//				log_msg.body.log_IMU.temp_gyro = buf.sensor.gyro1_temp;
+//				log_msg.body.log_IMU.temp_acc = buf.sensor.accelerometer1_temp;
+//				log_msg.body.log_IMU.temp_mag = buf.sensor.magnetometer1_temp;
+//				LOGBUFFER_WRITE_AND_COUNT(IMU);
 			}
 
 			if (buf.sensor.accelerometer2_timestamp != accelerometer2_timestamp) {
@@ -1568,20 +1569,20 @@ int sdlog2_thread_main(int argc, char *argv[])
 			}
 
 			if (write_IMU2) {
-				log_msg.msg_type = LOG_IMU2_MSG;
-				log_msg.body.log_IMU.gyro_x = buf.sensor.gyro2_rad_s[0];
-				log_msg.body.log_IMU.gyro_y = buf.sensor.gyro2_rad_s[1];
-				log_msg.body.log_IMU.gyro_z = buf.sensor.gyro2_rad_s[2];
-				log_msg.body.log_IMU.acc_x = buf.sensor.accelerometer2_m_s2[0];
-				log_msg.body.log_IMU.acc_y = buf.sensor.accelerometer2_m_s2[1];
-				log_msg.body.log_IMU.acc_z = buf.sensor.accelerometer2_m_s2[2];
-				log_msg.body.log_IMU.mag_x = buf.sensor.magnetometer2_ga[0];
-				log_msg.body.log_IMU.mag_y = buf.sensor.magnetometer2_ga[1];
-				log_msg.body.log_IMU.mag_z = buf.sensor.magnetometer2_ga[2];
-				log_msg.body.log_IMU.temp_gyro = buf.sensor.gyro2_temp;
-				log_msg.body.log_IMU.temp_acc = buf.sensor.accelerometer2_temp;
-				log_msg.body.log_IMU.temp_mag = buf.sensor.magnetometer2_temp;
-				LOGBUFFER_WRITE_AND_COUNT(IMU);
+//				log_msg.msg_type = LOG_IMU2_MSG;
+//				log_msg.body.log_IMU.gyro_x = buf.sensor.gyro2_rad_s[0];
+//				log_msg.body.log_IMU.gyro_y = buf.sensor.gyro2_rad_s[1];
+//				log_msg.body.log_IMU.gyro_z = buf.sensor.gyro2_rad_s[2];
+//				log_msg.body.log_IMU.acc_x = buf.sensor.accelerometer2_m_s2[0];
+//				log_msg.body.log_IMU.acc_y = buf.sensor.accelerometer2_m_s2[1];
+//				log_msg.body.log_IMU.acc_z = buf.sensor.accelerometer2_m_s2[2];
+//				log_msg.body.log_IMU.mag_x = buf.sensor.magnetometer2_ga[0];
+//				log_msg.body.log_IMU.mag_y = buf.sensor.magnetometer2_ga[1];
+//				log_msg.body.log_IMU.mag_z = buf.sensor.magnetometer2_ga[2];
+//				log_msg.body.log_IMU.temp_gyro = buf.sensor.gyro2_temp;
+//				log_msg.body.log_IMU.temp_acc = buf.sensor.accelerometer2_temp;
+//				log_msg.body.log_IMU.temp_mag = buf.sensor.magnetometer2_temp;
+//				LOGBUFFER_WRITE_AND_COUNT(IMU);
 			}
 
 		}
@@ -1647,12 +1648,12 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 		/* --- ACTUATOR CONTROL FW VTOL --- */
 		if(copy_if_updated(ORB_ID(actuator_controls_1), &subs.act_controls_1_sub,&buf.act_controls)) {
-			log_msg.msg_type = LOG_ATC1_MSG;
-			log_msg.body.log_ATTC.roll = buf.act_controls.control[0];
-			log_msg.body.log_ATTC.pitch = buf.act_controls.control[1];
-			log_msg.body.log_ATTC.yaw = buf.act_controls.control[2];
-			log_msg.body.log_ATTC.thrust = buf.act_controls.control[3];
-			LOGBUFFER_WRITE_AND_COUNT(ATTC);
+//			log_msg.msg_type = LOG_ATC1_MSG;
+//			log_msg.body.log_ATTC.roll = buf.act_controls.control[0];
+//			log_msg.body.log_ATTC.pitch = buf.act_controls.control[1];
+//			log_msg.body.log_ATTC.yaw = buf.act_controls.control[2];
+//			log_msg.body.log_ATTC.thrust = buf.act_controls.control[3];
+//			LOGBUFFER_WRITE_AND_COUNT(ATTC);
 		}
 
 		/* --- LOCAL POSITION --- */
@@ -1736,31 +1737,31 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 		/* --- MOCAP ATTITUDE AND POSITION --- */
 		if (copy_if_updated(ORB_ID(att_pos_mocap), &subs.att_pos_mocap_sub, &buf.att_pos_mocap)) {
-			log_msg.msg_type = LOG_MOCP_MSG;
-			log_msg.body.log_MOCP.qw = buf.att_pos_mocap.q[0];
-			log_msg.body.log_MOCP.qx = buf.att_pos_mocap.q[1];
-			log_msg.body.log_MOCP.qy = buf.att_pos_mocap.q[2];
-			log_msg.body.log_MOCP.qz = buf.att_pos_mocap.q[3];
-			log_msg.body.log_MOCP.x = buf.att_pos_mocap.x;
-			log_msg.body.log_MOCP.y = buf.att_pos_mocap.y;
-			log_msg.body.log_MOCP.z = buf.att_pos_mocap.z;
-			LOGBUFFER_WRITE_AND_COUNT(MOCP);
+//			log_msg.msg_type = LOG_MOCP_MSG;
+//			log_msg.body.log_MOCP.qw = buf.att_pos_mocap.q[0];
+//			log_msg.body.log_MOCP.qx = buf.att_pos_mocap.q[1];
+//			log_msg.body.log_MOCP.qy = buf.att_pos_mocap.q[2];
+//			log_msg.body.log_MOCP.qz = buf.att_pos_mocap.q[3];
+//			log_msg.body.log_MOCP.x = buf.att_pos_mocap.x;
+//			log_msg.body.log_MOCP.y = buf.att_pos_mocap.y;
+//			log_msg.body.log_MOCP.z = buf.att_pos_mocap.z;
+//			LOGBUFFER_WRITE_AND_COUNT(MOCP);
 		}
 
 		/* --- VISION POSITION --- */
 		if (copy_if_updated(ORB_ID(vision_position_estimate), &subs.vision_pos_sub, &buf.vision_pos)) {
-			log_msg.msg_type = LOG_VISN_MSG;
-			log_msg.body.log_VISN.x = buf.vision_pos.x;
-			log_msg.body.log_VISN.y = buf.vision_pos.y;
-			log_msg.body.log_VISN.z = buf.vision_pos.z;
-			log_msg.body.log_VISN.vx = buf.vision_pos.vx;
-			log_msg.body.log_VISN.vy = buf.vision_pos.vy;
-			log_msg.body.log_VISN.vz = buf.vision_pos.vz;
-			log_msg.body.log_VISN.qw = buf.vision_pos.q[0]; // vision_position_estimate uses [w,x,y,z] convention
-			log_msg.body.log_VISN.qx = buf.vision_pos.q[1];
-			log_msg.body.log_VISN.qy = buf.vision_pos.q[2];
-			log_msg.body.log_VISN.qz = buf.vision_pos.q[3];
-			LOGBUFFER_WRITE_AND_COUNT(VISN);
+//			log_msg.msg_type = LOG_VISN_MSG;
+//			log_msg.body.log_VISN.x = buf.vision_pos.x;
+//			log_msg.body.log_VISN.y = buf.vision_pos.y;
+//			log_msg.body.log_VISN.z = buf.vision_pos.z;
+//			log_msg.body.log_VISN.vx = buf.vision_pos.vx;
+//			log_msg.body.log_VISN.vy = buf.vision_pos.vy;
+//			log_msg.body.log_VISN.vz = buf.vision_pos.vz;
+//			log_msg.body.log_VISN.qw = buf.vision_pos.q[0]; // vision_position_estimate uses [w,x,y,z] convention
+//			log_msg.body.log_VISN.qx = buf.vision_pos.q[1];
+//			log_msg.body.log_VISN.qy = buf.vision_pos.q[2];
+//			log_msg.body.log_VISN.qz = buf.vision_pos.q[3];
+//			LOGBUFFER_WRITE_AND_COUNT(VISN);
 		}
 
 		/* --- FLOW --- */
@@ -1791,30 +1792,30 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 		/* --- AIRSPEED --- */
 		if (copy_if_updated(ORB_ID(airspeed), &subs.airspeed_sub, &buf.airspeed)) {
-			log_msg.msg_type = LOG_AIRS_MSG;
-			log_msg.body.log_AIRS.indicated_airspeed = buf.airspeed.indicated_airspeed_m_s;
-			log_msg.body.log_AIRS.true_airspeed = buf.airspeed.true_airspeed_m_s;
-			log_msg.body.log_AIRS.air_temperature_celsius = buf.airspeed.air_temperature_celsius;
-			LOGBUFFER_WRITE_AND_COUNT(AIRS);
+//			log_msg.msg_type = LOG_AIRS_MSG;
+//			log_msg.body.log_AIRS.indicated_airspeed = buf.airspeed.indicated_airspeed_m_s;
+//			log_msg.body.log_AIRS.true_airspeed = buf.airspeed.true_airspeed_m_s;
+//			log_msg.body.log_AIRS.air_temperature_celsius = buf.airspeed.air_temperature_celsius;
+//			LOGBUFFER_WRITE_AND_COUNT(AIRS);
 		}
 
 		/* --- ESCs --- */
 		if (copy_if_updated(ORB_ID(esc_status), &subs.esc_sub, &buf.esc)) {
 			for (uint8_t i = 0; i < buf.esc.esc_count; i++) {
-				log_msg.msg_type = LOG_ESC_MSG;
-				log_msg.body.log_ESC.counter = buf.esc.counter;
-				log_msg.body.log_ESC.esc_count = buf.esc.esc_count;
-				log_msg.body.log_ESC.esc_connectiontype = buf.esc.esc_connectiontype;
-				log_msg.body.log_ESC.esc_num = i;
-				log_msg.body.log_ESC.esc_address = buf.esc.esc[i].esc_address;
-				log_msg.body.log_ESC.esc_version = buf.esc.esc[i].esc_version;
-				log_msg.body.log_ESC.esc_voltage = buf.esc.esc[i].esc_voltage;
-				log_msg.body.log_ESC.esc_current = buf.esc.esc[i].esc_current;
-				log_msg.body.log_ESC.esc_rpm = buf.esc.esc[i].esc_rpm;
-				log_msg.body.log_ESC.esc_temperature = buf.esc.esc[i].esc_temperature;
-				log_msg.body.log_ESC.esc_setpoint = buf.esc.esc[i].esc_setpoint;
-				log_msg.body.log_ESC.esc_setpoint_raw = buf.esc.esc[i].esc_setpoint_raw;
-				LOGBUFFER_WRITE_AND_COUNT(ESC);
+//				log_msg.msg_type = LOG_ESC_MSG;
+//				log_msg.body.log_ESC.counter = buf.esc.counter;
+//				log_msg.body.log_ESC.esc_count = buf.esc.esc_count;
+//				log_msg.body.log_ESC.esc_connectiontype = buf.esc.esc_connectiontype;
+//				log_msg.body.log_ESC.esc_num = i;
+//				log_msg.body.log_ESC.esc_address = buf.esc.esc[i].esc_address;
+//				log_msg.body.log_ESC.esc_version = buf.esc.esc[i].esc_version;
+//				log_msg.body.log_ESC.esc_voltage = buf.esc.esc[i].esc_voltage;
+//				log_msg.body.log_ESC.esc_current = buf.esc.esc[i].esc_current;
+//				log_msg.body.log_ESC.esc_rpm = buf.esc.esc[i].esc_rpm;
+//				log_msg.body.log_ESC.esc_temperature = buf.esc.esc[i].esc_temperature;
+//				log_msg.body.log_ESC.esc_setpoint = buf.esc.esc[i].esc_setpoint;
+//				log_msg.body.log_ESC.esc_setpoint_raw = buf.esc.esc[i].esc_setpoint_raw;
+//				LOGBUFFER_WRITE_AND_COUNT(ESC);
 			}
 		}
 
@@ -1829,145 +1830,145 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 		/* --- BATTERY --- */
 		if (copy_if_updated(ORB_ID(battery_status), &subs.battery_sub, &buf.battery)) {
-			log_msg.msg_type = LOG_BATT_MSG;
-			log_msg.body.log_BATT.voltage = buf.battery.voltage_v;
-			log_msg.body.log_BATT.voltage_filtered = buf.battery.voltage_filtered_v;
-			log_msg.body.log_BATT.current = buf.battery.current_a;
-			log_msg.body.log_BATT.discharged = buf.battery.discharged_mah;
-			LOGBUFFER_WRITE_AND_COUNT(BATT);
+//			log_msg.msg_type = LOG_BATT_MSG;
+//			log_msg.body.log_BATT.voltage = buf.battery.voltage_v;
+//			log_msg.body.log_BATT.voltage_filtered = buf.battery.voltage_filtered_v;
+//			log_msg.body.log_BATT.current = buf.battery.current_a;
+//			log_msg.body.log_BATT.discharged = buf.battery.discharged_mah;
+//			LOGBUFFER_WRITE_AND_COUNT(BATT);
 		}
 
 		/* --- SYSTEM POWER RAILS --- */
 		if (copy_if_updated(ORB_ID(system_power), &subs.system_power_sub, &buf.system_power)) {
-			log_msg.msg_type = LOG_PWR_MSG;
-			log_msg.body.log_PWR.peripherals_5v = buf.system_power.voltage5V_v;
-			log_msg.body.log_PWR.usb_ok = buf.system_power.usb_connected;
-			log_msg.body.log_PWR.brick_ok = buf.system_power.brick_valid;
-			log_msg.body.log_PWR.servo_ok = buf.system_power.servo_valid;
-			log_msg.body.log_PWR.low_power_rail_overcurrent = buf.system_power.periph_5V_OC;
-			log_msg.body.log_PWR.high_power_rail_overcurrent = buf.system_power.hipower_5V_OC;
+//			log_msg.msg_type = LOG_PWR_MSG;
+//			log_msg.body.log_PWR.peripherals_5v = buf.system_power.voltage5V_v;
+//			log_msg.body.log_PWR.usb_ok = buf.system_power.usb_connected;
+//			log_msg.body.log_PWR.brick_ok = buf.system_power.brick_valid;
+//			log_msg.body.log_PWR.servo_ok = buf.system_power.servo_valid;
+//			log_msg.body.log_PWR.low_power_rail_overcurrent = buf.system_power.periph_5V_OC;
+//			log_msg.body.log_PWR.high_power_rail_overcurrent = buf.system_power.hipower_5V_OC;
 
-			/* copy servo rail status topic here too */
-			orb_copy(ORB_ID(servorail_status), subs.servorail_status_sub, &buf.servorail_status);
-			log_msg.body.log_PWR.servo_rail_5v = buf.servorail_status.voltage_v;
-			log_msg.body.log_PWR.servo_rssi = buf.servorail_status.rssi_v;
+//			/* copy servo rail status topic here too */
+//			orb_copy(ORB_ID(servorail_status), subs.servorail_status_sub, &buf.servorail_status);
+//			log_msg.body.log_PWR.servo_rail_5v = buf.servorail_status.voltage_v;
+//			log_msg.body.log_PWR.servo_rssi = buf.servorail_status.rssi_v;
 
-			LOGBUFFER_WRITE_AND_COUNT(PWR);
+//			LOGBUFFER_WRITE_AND_COUNT(PWR);
 		}
 
 		/* --- TELEMETRY --- */
 		for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
 			if (copy_if_updated_multi(ORB_ID(telemetry_status), i, &subs.telemetry_subs[i], &buf.telemetry)) {
-				log_msg.msg_type = LOG_TEL0_MSG + i;
-				log_msg.body.log_TEL.rssi = buf.telemetry.rssi;
-				log_msg.body.log_TEL.remote_rssi = buf.telemetry.remote_rssi;
-				log_msg.body.log_TEL.noise = buf.telemetry.noise;
-				log_msg.body.log_TEL.remote_noise = buf.telemetry.remote_noise;
-				log_msg.body.log_TEL.rxerrors = buf.telemetry.rxerrors;
-				log_msg.body.log_TEL.fixed = buf.telemetry.fixed;
-				log_msg.body.log_TEL.txbuf = buf.telemetry.txbuf;
-				log_msg.body.log_TEL.heartbeat_time = buf.telemetry.heartbeat_time;
-				LOGBUFFER_WRITE_AND_COUNT(TEL);
+//				log_msg.msg_type = LOG_TEL0_MSG + i;
+//				log_msg.body.log_TEL.rssi = buf.telemetry.rssi;
+//				log_msg.body.log_TEL.remote_rssi = buf.telemetry.remote_rssi;
+//				log_msg.body.log_TEL.noise = buf.telemetry.noise;
+//				log_msg.body.log_TEL.remote_noise = buf.telemetry.remote_noise;
+//				log_msg.body.log_TEL.rxerrors = buf.telemetry.rxerrors;
+//				log_msg.body.log_TEL.fixed = buf.telemetry.fixed;
+//				log_msg.body.log_TEL.txbuf = buf.telemetry.txbuf;
+//				log_msg.body.log_TEL.heartbeat_time = buf.telemetry.heartbeat_time;
+//				LOGBUFFER_WRITE_AND_COUNT(TEL);
 			}
 		}
 
 		/* --- DISTANCE SENSOR --- */
 		if (copy_if_updated(ORB_ID(distance_sensor), &subs.distance_sensor_sub, &buf.distance_sensor)) {
-			log_msg.msg_type = LOG_DIST_MSG;
-			log_msg.body.log_DIST.id = buf.distance_sensor.id;
-			log_msg.body.log_DIST.type = buf.distance_sensor.type;
-			log_msg.body.log_DIST.orientation = buf.distance_sensor.orientation;
-			log_msg.body.log_DIST.current_distance = buf.distance_sensor.current_distance;
-			log_msg.body.log_DIST.covariance = buf.distance_sensor.covariance;
-			LOGBUFFER_WRITE_AND_COUNT(DIST);
+//			log_msg.msg_type = LOG_DIST_MSG;
+//			log_msg.body.log_DIST.id = buf.distance_sensor.id;
+//			log_msg.body.log_DIST.type = buf.distance_sensor.type;
+//			log_msg.body.log_DIST.orientation = buf.distance_sensor.orientation;
+//			log_msg.body.log_DIST.current_distance = buf.distance_sensor.current_distance;
+//			log_msg.body.log_DIST.covariance = buf.distance_sensor.covariance;
+//			LOGBUFFER_WRITE_AND_COUNT(DIST);
 		}
 
 		/* --- ESTIMATOR STATUS --- */
 		if (copy_if_updated(ORB_ID(estimator_status), &subs.estimator_status_sub, &buf.estimator_status)) {
-			log_msg.msg_type = LOG_EST0_MSG;
-			unsigned maxcopy0 = (sizeof(buf.estimator_status.states) < sizeof(log_msg.body.log_EST0.s)) ? sizeof(buf.estimator_status.states) : sizeof(log_msg.body.log_EST0.s);
-			memset(&(log_msg.body.log_EST0.s), 0, sizeof(log_msg.body.log_EST0.s));
-			memcpy(&(log_msg.body.log_EST0.s), buf.estimator_status.states, maxcopy0);
-			log_msg.body.log_EST0.n_states = buf.estimator_status.n_states;
-			log_msg.body.log_EST0.nan_flags = buf.estimator_status.nan_flags;
-			log_msg.body.log_EST0.health_flags = buf.estimator_status.health_flags;
-			log_msg.body.log_EST0.timeout_flags = buf.estimator_status.timeout_flags;
-			LOGBUFFER_WRITE_AND_COUNT(EST0);
+//			log_msg.msg_type = LOG_EST0_MSG;
+//			unsigned maxcopy0 = (sizeof(buf.estimator_status.states) < sizeof(log_msg.body.log_EST0.s)) ? sizeof(buf.estimator_status.states) : sizeof(log_msg.body.log_EST0.s);
+//			memset(&(log_msg.body.log_EST0.s), 0, sizeof(log_msg.body.log_EST0.s));
+//			memcpy(&(log_msg.body.log_EST0.s), buf.estimator_status.states, maxcopy0);
+//			log_msg.body.log_EST0.n_states = buf.estimator_status.n_states;
+//			log_msg.body.log_EST0.nan_flags = buf.estimator_status.nan_flags;
+//			log_msg.body.log_EST0.health_flags = buf.estimator_status.health_flags;
+//			log_msg.body.log_EST0.timeout_flags = buf.estimator_status.timeout_flags;
+//			LOGBUFFER_WRITE_AND_COUNT(EST0);
 
-			log_msg.msg_type = LOG_EST1_MSG;
-			unsigned maxcopy1 = ((sizeof(buf.estimator_status.states) - maxcopy0) < sizeof(log_msg.body.log_EST1.s)) ? (sizeof(buf.estimator_status.states) - maxcopy0) : sizeof(log_msg.body.log_EST1.s);
-			memset(&(log_msg.body.log_EST1.s), 0, sizeof(log_msg.body.log_EST1.s));
-			memcpy(&(log_msg.body.log_EST1.s), buf.estimator_status.states + maxcopy0, maxcopy1);
-			LOGBUFFER_WRITE_AND_COUNT(EST1);
+//			log_msg.msg_type = LOG_EST1_MSG;
+//			unsigned maxcopy1 = ((sizeof(buf.estimator_status.states) - maxcopy0) < sizeof(log_msg.body.log_EST1.s)) ? (sizeof(buf.estimator_status.states) - maxcopy0) : sizeof(log_msg.body.log_EST1.s);
+//			memset(&(log_msg.body.log_EST1.s), 0, sizeof(log_msg.body.log_EST1.s));
+//			memcpy(&(log_msg.body.log_EST1.s), buf.estimator_status.states + maxcopy0, maxcopy1);
+//			LOGBUFFER_WRITE_AND_COUNT(EST1);
 
-			log_msg.msg_type = LOG_EST2_MSG;
-			unsigned maxcopy2 = (sizeof(buf.estimator_status.covariances) < sizeof(log_msg.body.log_EST2.cov)) ? sizeof(buf.estimator_status.covariances) : sizeof(log_msg.body.log_EST2.cov);
-			memset(&(log_msg.body.log_EST2.cov), 0, sizeof(log_msg.body.log_EST2.cov));
-			memcpy(&(log_msg.body.log_EST2.cov), buf.estimator_status.covariances, maxcopy2);
-			LOGBUFFER_WRITE_AND_COUNT(EST2);
+//			log_msg.msg_type = LOG_EST2_MSG;
+//			unsigned maxcopy2 = (sizeof(buf.estimator_status.covariances) < sizeof(log_msg.body.log_EST2.cov)) ? sizeof(buf.estimator_status.covariances) : sizeof(log_msg.body.log_EST2.cov);
+//			memset(&(log_msg.body.log_EST2.cov), 0, sizeof(log_msg.body.log_EST2.cov));
+//			memcpy(&(log_msg.body.log_EST2.cov), buf.estimator_status.covariances, maxcopy2);
+//			LOGBUFFER_WRITE_AND_COUNT(EST2);
 
-			log_msg.msg_type = LOG_EST3_MSG;
-			unsigned maxcopy3 = ((sizeof(buf.estimator_status.covariances) - maxcopy2) < sizeof(log_msg.body.log_EST3.cov)) ? (sizeof(buf.estimator_status.covariances) - maxcopy2) : sizeof(log_msg.body.log_EST3.cov);
-			memset(&(log_msg.body.log_EST3.cov), 0, sizeof(log_msg.body.log_EST3.cov));
-			memcpy(&(log_msg.body.log_EST3.cov), buf.estimator_status.covariances + maxcopy2, maxcopy3);
-			LOGBUFFER_WRITE_AND_COUNT(EST3);
+//			log_msg.msg_type = LOG_EST3_MSG;
+//			unsigned maxcopy3 = ((sizeof(buf.estimator_status.covariances) - maxcopy2) < sizeof(log_msg.body.log_EST3.cov)) ? (sizeof(buf.estimator_status.covariances) - maxcopy2) : sizeof(log_msg.body.log_EST3.cov);
+//			memset(&(log_msg.body.log_EST3.cov), 0, sizeof(log_msg.body.log_EST3.cov));
+//			memcpy(&(log_msg.body.log_EST3.cov), buf.estimator_status.covariances + maxcopy2, maxcopy3);
+//			LOGBUFFER_WRITE_AND_COUNT(EST3);
 		}
 
 		/* --- TECS STATUS --- */
 		if (copy_if_updated(ORB_ID(tecs_status), &subs.tecs_status_sub, &buf.tecs_status)) {
-			log_msg.msg_type = LOG_TECS_MSG;
-			log_msg.body.log_TECS.altitudeSp = buf.tecs_status.altitudeSp;
-			log_msg.body.log_TECS.altitudeFiltered = buf.tecs_status.altitude_filtered;
-			log_msg.body.log_TECS.flightPathAngleSp = buf.tecs_status.flightPathAngleSp;
-			log_msg.body.log_TECS.flightPathAngle = buf.tecs_status.flightPathAngle;
-			log_msg.body.log_TECS.airspeedSp = buf.tecs_status.airspeedSp;
-			log_msg.body.log_TECS.airspeedFiltered = buf.tecs_status.airspeed_filtered;
-			log_msg.body.log_TECS.airspeedDerivativeSp = buf.tecs_status.airspeedDerivativeSp;
-			log_msg.body.log_TECS.airspeedDerivative = buf.tecs_status.airspeedDerivative;
-			log_msg.body.log_TECS.totalEnergyError = buf.tecs_status.totalEnergyError;
-			log_msg.body.log_TECS.energyDistributionError = buf.tecs_status.energyDistributionError;
-			log_msg.body.log_TECS.totalEnergyRateError = buf.tecs_status.totalEnergyRateError;
-			log_msg.body.log_TECS.energyDistributionRateError = buf.tecs_status.energyDistributionRateError;
-			log_msg.body.log_TECS.throttle_integ = buf.tecs_status.throttle_integ;
-			log_msg.body.log_TECS.pitch_integ = buf.tecs_status.pitch_integ;
-			log_msg.body.log_TECS.mode = (uint8_t)buf.tecs_status.mode;
-			LOGBUFFER_WRITE_AND_COUNT(TECS);
+//			log_msg.msg_type = LOG_TECS_MSG;
+//			log_msg.body.log_TECS.altitudeSp = buf.tecs_status.altitudeSp;
+//			log_msg.body.log_TECS.altitudeFiltered = buf.tecs_status.altitude_filtered;
+//			log_msg.body.log_TECS.flightPathAngleSp = buf.tecs_status.flightPathAngleSp;
+//			log_msg.body.log_TECS.flightPathAngle = buf.tecs_status.flightPathAngle;
+//			log_msg.body.log_TECS.airspeedSp = buf.tecs_status.airspeedSp;
+//			log_msg.body.log_TECS.airspeedFiltered = buf.tecs_status.airspeed_filtered;
+//			log_msg.body.log_TECS.airspeedDerivativeSp = buf.tecs_status.airspeedDerivativeSp;
+//			log_msg.body.log_TECS.airspeedDerivative = buf.tecs_status.airspeedDerivative;
+//			log_msg.body.log_TECS.totalEnergyError = buf.tecs_status.totalEnergyError;
+//			log_msg.body.log_TECS.energyDistributionError = buf.tecs_status.energyDistributionError;
+//			log_msg.body.log_TECS.totalEnergyRateError = buf.tecs_status.totalEnergyRateError;
+//			log_msg.body.log_TECS.energyDistributionRateError = buf.tecs_status.energyDistributionRateError;
+//			log_msg.body.log_TECS.throttle_integ = buf.tecs_status.throttle_integ;
+//			log_msg.body.log_TECS.pitch_integ = buf.tecs_status.pitch_integ;
+//			log_msg.body.log_TECS.mode = (uint8_t)buf.tecs_status.mode;
+//			LOGBUFFER_WRITE_AND_COUNT(TECS);
 		}
 
 		/* --- WIND ESTIMATE --- */
 		if (copy_if_updated(ORB_ID(wind_estimate), &subs.wind_sub, &buf.wind_estimate)) {
-			log_msg.msg_type = LOG_WIND_MSG;
-			log_msg.body.log_WIND.x = buf.wind_estimate.windspeed_north;
-			log_msg.body.log_WIND.y = buf.wind_estimate.windspeed_east;
-			log_msg.body.log_WIND.cov_x = buf.wind_estimate.covariance_north;
-			log_msg.body.log_WIND.cov_y = buf.wind_estimate.covariance_east;
-			LOGBUFFER_WRITE_AND_COUNT(WIND);
+//			log_msg.msg_type = LOG_WIND_MSG;
+//			log_msg.body.log_WIND.x = buf.wind_estimate.windspeed_north;
+//			log_msg.body.log_WIND.y = buf.wind_estimate.windspeed_east;
+//			log_msg.body.log_WIND.cov_x = buf.wind_estimate.covariance_north;
+//			log_msg.body.log_WIND.cov_y = buf.wind_estimate.covariance_east;
+//			LOGBUFFER_WRITE_AND_COUNT(WIND);
 		}
 
 		/* --- ENCODERS --- */
 		if (copy_if_updated(ORB_ID(encoders), &subs.encoders_sub, &buf.encoders)) {
-			log_msg.msg_type = LOG_ENCD_MSG;
-			log_msg.body.log_ENCD.cnt0 = buf.encoders.counts[0];
-			log_msg.body.log_ENCD.vel0 = buf.encoders.velocity[0];
-			log_msg.body.log_ENCD.cnt1 = buf.encoders.counts[1];
-			log_msg.body.log_ENCD.vel1 = buf.encoders.velocity[1];
-			LOGBUFFER_WRITE_AND_COUNT(ENCD);
+//			log_msg.msg_type = LOG_ENCD_MSG;
+//			log_msg.body.log_ENCD.cnt0 = buf.encoders.counts[0];
+//			log_msg.body.log_ENCD.vel0 = buf.encoders.velocity[0];
+//			log_msg.body.log_ENCD.cnt1 = buf.encoders.counts[1];
+//			log_msg.body.log_ENCD.vel1 = buf.encoders.velocity[1];
+//			LOGBUFFER_WRITE_AND_COUNT(ENCD);
 		}
 
 		/* --- TIMESYNC OFFSET --- */
 		if (copy_if_updated(ORB_ID(time_offset), &subs.tsync_sub, &buf.time_offset)) {
-			log_msg.msg_type = LOG_TSYN_MSG;
-			log_msg.body.log_TSYN.time_offset = buf.time_offset.offset_ns;
-			LOGBUFFER_WRITE_AND_COUNT(TSYN);
+//			log_msg.msg_type = LOG_TSYN_MSG;
+//			log_msg.body.log_TSYN.time_offset = buf.time_offset.offset_ns;
+//			LOGBUFFER_WRITE_AND_COUNT(TSYN);
 		}
 
 		/* --- MULTIROTOR ATTITUDE CONTROLLER STATUS --- */
 		if (copy_if_updated(ORB_ID(mc_att_ctrl_status), &subs.mc_att_ctrl_status_sub, &buf.mc_att_ctrl_status)) {
-			log_msg.msg_type = LOG_MACS_MSG;
-			log_msg.body.log_MACS.roll_rate_integ = buf.mc_att_ctrl_status.roll_rate_integ;
-			log_msg.body.log_MACS.pitch_rate_integ = buf.mc_att_ctrl_status.pitch_rate_integ;
-			log_msg.body.log_MACS.yaw_rate_integ = buf.mc_att_ctrl_status.yaw_rate_integ;
-			LOGBUFFER_WRITE_AND_COUNT(MACS);
+//			log_msg.msg_type = LOG_MACS_MSG;
+//			log_msg.body.log_MACS.roll_rate_integ = buf.mc_att_ctrl_status.roll_rate_integ;
+//			log_msg.body.log_MACS.pitch_rate_integ = buf.mc_att_ctrl_status.pitch_rate_integ;
+//			log_msg.body.log_MACS.yaw_rate_integ = buf.mc_att_ctrl_status.yaw_rate_integ;
+//			LOGBUFFER_WRITE_AND_COUNT(MACS);
 		}
 
 		/* signal the other thread new data, but not yet unlock */

@@ -76,6 +76,12 @@
 #include "position_estimator_inav_params.h"
 #include "inertial_filter.h"
 
+
+/* -YJ- 2015.10.13 */
+#include "codegen/HeightEKF.h"
+
+
+
 #define MIN_VALID_W 0.00001f
 #define PUB_INTERVAL 10000	// limit publish rate to 100 Hz
 #define EST_BUF_SIZE 250000 / PUB_INTERVAL		// buffer size is 0.5s
@@ -266,10 +272,10 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 	hrt_abstime accel_timestamp = 0;
 	hrt_abstime baro_timestamp = 0;
 
-	bool ref_inited = false;
+	bool ref_inited = false; // initialize reference position flag, true: is inited
 	hrt_abstime ref_init_start = 0;
 	const hrt_abstime ref_init_delay = 1000000;	// wait for 1s after 3D fix
-	struct map_projection_reference_s ref;
+	struct map_projection_reference_s ref;  // // ref:home position
 	memset(&ref, 0, sizeof(ref));
 	hrt_abstime home_timestamp = 0;
 
@@ -410,7 +416,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 						}
 
 					} else {
-						wait_baro = false;
+						wait_baro = false; // baro init  over
 						baro_offset /= (float) baro_init_cnt;
 						warnx("baro offset: %d m", (int)baro_offset);
 						mavlink_log_info(mavlink_fd, "[inav] baro offset: %d m", (int)baro_offset);
@@ -421,6 +427,11 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			}
 		}
 	}
+
+	/* -YJ- 2015.10.15 height estimation init*/
+	float X_apo_height[2] = {0.0f, 0.0f};
+	float P_apo_k_height[4] = {100.0f,0.0f,
+							0.0f,100.0f};
 
 	/* main loop */
 	px4_pollfd_struct_t fds[1] = {
@@ -507,11 +518,13 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 				}
 			}
 
-			/* optical flow */
+/* optical flow */
 			orb_check(optical_flow_sub, &updated);
 
 			if (updated) {
 				orb_copy(ORB_ID(optical_flow), optical_flow_sub, &flow);
+				/*-YJ- 2015.11.03 added by px4: I guess there is a new measure distance sensor*/
+				//orb_copy(ORB_ID(distance_sensor), distance_sensor_sub, &lidar);
 
 				/* calculate time from previous update */
 //				float flow_dt = flow_prev > 0 ? (flow.flow_timestamp - flow_prev) * 1e-6f : 0.1f;
@@ -617,6 +630,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 				flow_updates++;
 			}
 
+// home position
 			/* home position */
 			orb_check(home_position_sub, &updated);
 
@@ -657,6 +671,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			}
 
 
+// vision
 			/* check no vision circuit breaker is set */
 			if (params.no_vision != CBRK_NO_VISION_KEY) {
 				/* vehicle vision position */
@@ -726,6 +741,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 				}
 			}
 
+// mocap (position measurements)
 			/* vehicle mocap position */
 			orb_check(att_pos_mocap_sub, &updated);
 
@@ -752,7 +768,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 				mocap_updates++;
 			}
 
-			/* vehicle GPS position */
+/* vehicle GPS position */
 			orb_check(vehicle_gps_position_sub, &updated);
 
 			if (updated) {
@@ -1050,7 +1066,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			}
 		}
 
-		/* inertial filter prediction for altitude */
+		/* -YJ- inertial filter prediction for altitude */
 		inertial_filter_predict(dt, z_est, acc[2]);
 
 		if (!(isfinite(z_est[0]) && isfinite(z_est[1]))) {
@@ -1113,6 +1129,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 
 				inertial_filter_correct(corr_flow[0], dt, x_est, 1, params.w_xy_flow * w_flow);
 				inertial_filter_correct(corr_flow[1], dt, y_est, 1, params.w_xy_flow * w_flow);
+				//mavlink_log_info(mavlink_fd, "w_flow = %2.4f\t w_xy_flow = %2.4f\n", (double)w_flow, (double)params.w_xy_flow);
 			}
 
 			if (use_gps_xy) {
@@ -1191,6 +1208,28 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			}
 		}
 
+/******************----------------------------------------------------------------------*****************************/
+		
+		uint8_t zFlag[2] = {1, 1};
+		
+		float z[2] = {-(sensor.baro_alt_meter-baro_offset), acc[2]};
+		float r_baro = params.r_baro; // 10.0f;			
+		float r_acc =  params.r_accZ; // 0.5f;
+		
+//		printf("r_baro = %8.4f, r_acc = %8.4f\n", (double) r_baro, (double) r_acc);
+		 
+		/* -YJ- 2015.10.15 height estimation */
+		 HeightEKF( X_apo_height, 
+		 			P_apo_k_height,
+		 			zFlag, 
+		 			dt, 
+		 			z, 
+		 			r_baro, 
+		 			r_acc, 
+		 			X_apo_height, 
+		 			P_apo_k_height);
+
+
 		if (t > pub_last + PUB_INTERVAL) {
 			pub_last = t;
 
@@ -1215,8 +1254,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			local_pos.v_xy_valid = can_estimate_xy;
 			local_pos.xy_global = local_pos.xy_valid && use_gps_xy;
 			local_pos.z_global = local_pos.z_valid && use_gps_z;
-			local_pos.x = x_est[0];
-			local_pos.vx = x_est[1];
+			local_pos.x = x_est[0]; // X_apo_height[0]; //
+			local_pos.vx = x_est[1]; // X_apo_height[1]; //
 			local_pos.y = y_est[0];
 			local_pos.vy = y_est[1];
 			local_pos.z = z_est[0];
@@ -1230,6 +1269,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 				local_pos.dist_bottom = -z_est[0] - surface_offset;
 				local_pos.dist_bottom_rate = -z_est[1] - surface_offset_rate;
 			}
+			/* -YJ- 2015.10.13 */
+			local_pos.dist_bottom_rate = acc[2]; // -z_est[1] - surface_offset_rate;
 
 			local_pos.timestamp = t;
 

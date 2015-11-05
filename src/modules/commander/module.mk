@@ -48,13 +48,19 @@ SRCS		 	= commander.cpp \
 			rc_calibration.cpp \
 			airspeed_calibration.cpp \
 			esc_calibration.cpp \
-			PreflightCheck.cpp
+			PreflightCheck.cpp\
+			codegen/ellipsoid_fit_simplify_1023_2/ellipsoid_fit_simplify_1023_2.c\
+			codegen/ellipsoid_fit_simplify_1023_2/rt_nonfinite.c\
+			codegen/ellipsoid_fit_simplify_1023_2/rtGetNaN.c\
+			codegen/ellipsoid_fit_simplify_1023_2/rtGetInf.c\
 
 MODULE_STACKSIZE = 5000
 
 MAXOPTIMIZATION	 = -Os
 
 ifeq ($(PX4_TARGET_OS),nuttx)
-EXTRACXXFLAGS = -Wframe-larger-than=2200
+  EXTRACXXFLAGS = -Wframe-larger-than=2200
+  # -YJ- 2015.10.24  CXX/C = C++/C never treat warning as error
+  EXTRACFLAGS = -Wno-float-equal  
 endif
 

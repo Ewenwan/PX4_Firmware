@@ -39,7 +39,9 @@ MODULE_COMMAND	 = attitude_estimator_ekf
 
 SRCS		 = attitude_estimator_ekf_main.cpp \
 		   attitude_estimator_ekf_params.c \
-		   codegen/AttitudeEKF.c
+		   codegen/AttitudeEKF.c\
+		   codegen/AttEKF/rt_nonfinite.c \
+		   codegen/AttEKF/AttitudeEKF_0916.c
 
 MODULE_STACKSIZE = 1200
 

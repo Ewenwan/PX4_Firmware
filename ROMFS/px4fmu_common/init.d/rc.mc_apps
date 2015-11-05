@@ -11,7 +11,7 @@ if param compare INAV_ENABLED 1
 then
 	# The system is defaulting to EKF_ATT_ENABLED = 1
 	# and uses the older EKF filter. However users can
-	# enable the new quaternion based complimentary
+	# enable the new quaternion based complementary
 	# filter by setting EKF_ATT_ENABLED = 0.
 	# Note that on FMUv1, the EKF att estimator is not
 	# available and the Q estimator runs instead.

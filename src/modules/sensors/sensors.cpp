@@ -165,6 +165,11 @@ public:
 	int		start();
 
 private:
+
+	float 	rc_x_filter;
+	float 	rc_y_filter ;
+
+	
 	static const unsigned _rc_max_chan_count = input_rc_s::RC_INPUT_MAX_CHANNELS;	/**< maximum number of r/c channels we handle */
 
 	/**
@@ -316,6 +321,9 @@ private:
 
 		float baro_qnh;
 
+		/*-YJ- 2015.11.04 rc_in low-pass filter ratio*/
+		float low_pass_filter_ratio;
+
 	}		_parameters;			/**< local copies of interesting parameters */
 
 	struct {
@@ -373,6 +381,9 @@ private:
 		param_t board_offset[3];
 
 		param_t baro_qnh;
+
+		/*-YJ- 2015.11.04 rc_in low-pass filter ratio*/
+		param_t low_pass_filter_ratio;
 
 	}		_parameter_handles;		/**< handles for interesting parameters */
 
@@ -470,6 +481,11 @@ private:
 	 */
 	void		adc_poll(struct sensor_combined_s &raw);
 
+
+	float rc_in_filter(float rc_filtered, float rc_raw);
+
+
+
 	/**
 	 * Shim for calling task_main from task_create.
 	 */
@@ -546,6 +562,11 @@ Sensors::Sensors() :
 	_battery_discharged(0),
 	_battery_current_timestamp(0)
 {
+
+	/*-YJ- init*/
+	rc_x_filter = 0.0f;
+	rc_y_filter = 0.0f;
+
 	memset(&_rc, 0, sizeof(_rc));
 	memset(&_diff_pres, 0, sizeof(_diff_pres));
 	memset(&_rc_parameter_map, 0, sizeof(_rc_parameter_map));
@@ -617,6 +638,9 @@ Sensors::Sensors() :
 	_parameter_handles.rc_loiter_th = param_find("RC_LOITER_TH");
 	_parameter_handles.rc_acro_th = param_find("RC_ACRO_TH");
 	_parameter_handles.rc_offboard_th = param_find("RC_OFFB_TH");
+
+	/*-YJ- 2015.11.04 get rc_in low-pass filter ratio*/
+	_parameter_handles.low_pass_filter_ratio = param_find("RC_FILTER_RATIO");
 
 	/* Differential pressure offset */
 	_parameter_handles.diff_pres_offset_pa = param_find("SENS_DPRES_OFF");
@@ -808,6 +832,12 @@ Sensors::parameters_update()
 	param_get(_parameter_handles.rc_offboard_th, &(_parameters.rc_offboard_th));
 	_parameters.rc_offboard_inv = (_parameters.rc_offboard_th < 0);
 	_parameters.rc_offboard_th = fabs(_parameters.rc_offboard_th);
+
+	/*-YJ- 2015.11.04 translate param to local varibale*/
+	if (param_get(_parameter_handles.low_pass_filter_ratio, &(_parameters.low_pass_filter_ratio)) != OK) {
+		warnx("low_pass_filter_ratio %s", paramerr);
+	}
+
 
 	/* update RC function mappings */
 	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_THROTTLE] = _parameters.rc_map_throttle - 1;
@@ -2019,6 +2049,8 @@ Sensors::rc_poll()
 		/* publish rc_channels topic even if signal is invalid, for debug */
 		if (_rc_pub != nullptr) {
 			orb_publish(ORB_ID(rc_channels), _rc_pub, &_rc);
+		/****-printf-*-YJ- RC[1000, 2000]--> [-1, 1] */
+//			printf("Sensor.cpp:RC_poll= %4.2f\n", (double)_rc.channels[0]);
 
 		} else {
 			_rc_pub = orb_advertise(ORB_ID(rc_channels), &_rc);
@@ -2051,9 +2083,23 @@ Sensors::rc_poll()
 			manual.acro_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_ACRO, _parameters.rc_acro_th, _parameters.rc_acro_inv);
 			manual.offboard_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD, _parameters.rc_offboard_th, _parameters.rc_offboard_inv);
 
-			/* publish manual_control_setpoint topic */
+/* publish manual_control_setpoint topic */
+			
+			rc_x_filter = rc_in_filter(rc_x_filter, manual.x);
+			manual.x = rc_x_filter;
+			
+			rc_y_filter = rc_in_filter(rc_y_filter, manual.x);
+			manual.y = rc_y_filter;
+
+			printf("1:manual.x = %5.3f\n", (double)manual.x);
+			printf("2:manual.x = %5.3f\n", (double)rc_x_filter);
+			printf("ratio = %5.3f\n", (double)_parameters.low_pass_filter_ratio);
+			printf("********\n");
+
 			if (_manual_control_pub != nullptr) {
 				orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
+				
+				//printf("orb_publish: manual_control_setpoint \n");
 
 			} else {
 				_manual_control_pub = orb_advertise(ORB_ID(manual_control_setpoint), &manual);
@@ -2092,6 +2138,39 @@ Sensors::rc_poll()
 		}
 	}
 }
+
+
+/***********-YJ- 2015.11.03 stick rc_in filter test***********/
+float 
+Sensors::rc_in_filter(float rc_filtered, float rc_raw)
+{
+    // if raw input is large or reversing the vehicle's lean angle immediately set the fitlered angle to the new raw angle
+    if ((rc_filtered >= 0 && rc_raw < 0) || (rc_filtered <= 0 && rc_raw > 0) || (fabsf(rc_raw) > 1.0f)) {
+        rc_filtered = rc_raw;
+    } else {
+        // lean_angle_raw must be pulling lean_angle_filtered towards zero, smooth the decrease
+        if (rc_filtered > 0) {
+            // reduce the filtered lean angle at 5% or the brake rate (whichever is faster).
+            //rc_filtered -= math::max((float)rc_filtered * 0.0125f, math::max(1.0f, 0.5f));
+
+			// _parameters.low_pass_filter_ratio --default: 0.125f
+            rc_filtered -= (float)rc_filtered * _parameters.low_pass_filter_ratio; // -YJ- 
+			
+            // do not let the filtered angle fall below the pilot's input lean angle.
+            // the above line pulls the filtered angle down and the below line acts as a catch
+            rc_filtered = math::max(rc_filtered, rc_raw);
+			
+        }else{ // lean_angle_filtered < 0
+            //rc_filtered += math::max(-(float)rc_filtered * 0.125f, math::max(1.0f, 0.5f));
+            rc_filtered += -(float)rc_filtered * _parameters.low_pass_filter_ratio;  // -YJ-
+            rc_filtered = math::min(rc_filtered, rc_raw);
+        }
+    }
+	return rc_filtered;
+}
+
+
+
 
 void
 Sensors::task_main_trampoline(int argc, char *argv[])

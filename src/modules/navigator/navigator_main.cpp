@@ -715,6 +715,9 @@ Navigator::publish_att_sp()
 		/* publish att sp*/
 		orb_publish(ORB_ID(vehicle_attitude_setpoint), _att_sp_pub, &_att_sp);
 
+		/*-YJ- -printf- 2015.11.03***************************/
+		printf("NAV att_sp_pitch_body= %4.2f", (double)_att_sp.pitch_body);
+
 	} else {
 		/* advertise and publish */
 		_att_sp_pub = orb_advertise(ORB_ID(vehicle_attitude_setpoint), &_att_sp);

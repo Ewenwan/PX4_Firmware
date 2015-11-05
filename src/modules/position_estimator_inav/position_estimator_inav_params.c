@@ -313,6 +313,14 @@ PARAM_DEFINE_INT32(CBRK_NO_VISION, 0);
  */
 PARAM_DEFINE_INT32(INAV_ENABLED, 1);
 
+/* -YJ- 2015.10.19 altitude estimation paremeter*/
+
+PARAM_DEFINE_FLOAT(INAV_R_BARO, 10.0f);
+
+PARAM_DEFINE_FLOAT(INAV_R_ACC, 0.1f);
+
+
+
 int inav_parameters_init(struct position_estimator_inav_param_handles *h)
 {
 	h->w_z_baro = param_find("INAV_W_Z_BARO");
@@ -338,6 +346,10 @@ int inav_parameters_init(struct position_estimator_inav_param_handles *h)
 	h->land_thr = param_find("INAV_LAND_THR");
 	h->no_vision = param_find("CBRK_NO_VISION");
 	h->delay_gps = param_find("INAV_DELAY_GPS");
+
+	/*-YJ- 2015.10.19*/
+	h->r_baro= param_find("INAV_R_BARO");
+	h->r_accZ= param_find("INAV_R_ACC");
 
 	return 0;
 }
@@ -366,6 +378,10 @@ int inav_parameters_update(const struct position_estimator_inav_param_handles *h
 	param_get(h->land_thr, &(p->land_thr));
 	param_get(h->no_vision, &(p->no_vision));
 	param_get(h->delay_gps, &(p->delay_gps));
+
+	/*-YJ- 2015.10.19*/
+	param_get(h->r_baro, &(p->r_baro));
+	param_get(h->r_accZ, &(p->r_accZ));
 
 	return 0;
 }
